@@ -1,3 +1,6 @@
+# Brantsteele-style battle royale simulator.
+# But with events chained logically.
+
 import sqlite3
 import nextcord
 from nextcord.ext import commands
@@ -10,7 +13,6 @@ cursor = database.cursor()
 
 
 
-# Tablas de seed (se recrean siempre para reflejar cambios en el código)
 # br_players NO se dropea: preserva los nombres/géneros editados por el usuario
 cursor.execute("DROP TABLE IF EXISTS br_stages;")
 cursor.execute("DROP TABLE IF EXISTS br_sessions;")
@@ -162,7 +164,9 @@ cursor.execute("""INSERT OR IGNORE INTO br_items (id, item_name, item_value) VAL
                (2, 'Comida completa', 3),
                (3, 'Cantimplora', 2),
                (4, 'Escudo', 2),
-               (5, 'Comida simple', 1);""")
+               (5, 'Comida simple', 1),
+               (6, 'Medicamentos', 3),
+               (7, 'Hierbas medicinales', 1);""")
 cursor.execute("""INSERT OR IGNORE INTO br_events (id, event_text, category, alive, dead, weapon_id, item_id) VALUES
                -- Idle (1)
                (1, '**player__1** se mantuvo alerta en su escondite.', 0, 0, 0, NULL, NULL),
@@ -182,7 +186,7 @@ cursor.execute("""INSERT OR IGNORE INTO br_events (id, event_text, category, ali
                (13, '**player__1** dejó morir a **player__2** tras noquearl@ en un río.', 1, 1, 1, NULL, NULL),
                (14, '**player__1** asesinó a **player__2** mientras ést$ pedía piedad.', 1, 1, 1, NULL, NULL),
 
-               -- Empates (15-16)
+               -- Draws (15-16)
                (15, '**player__1** se desangró después de matar a **player__2**.', 1, 0, 2, NULL, NULL),
                (16, '**player__1** intentó empujar a **player__2** a un precipicio pero acabó cayendo también.', 1, 0, 2, NULL, NULL),
 
@@ -310,46 +314,50 @@ cursor.execute("""INSERT OR IGNORE INTO br_events (id, event_text, category, ali
                (135, '**player__1** tomó un arco largo y munición.', 2, 0, 0, 19, NULL),
                (136, '**player__1** tomó una ballesta pesada y munición.', 2, 0, 0, 20, NULL),
 
-               -- Practice (137-156)
-               (137, '**player__1** pasó el tiempo practicando con su cuchillo.', 3, 0, 0, 1, NULL),
-               (138, '**player__1** pasó el tiempo practicando con su daga.', 3, 0, 0, 2, NULL),
-               (139, '**player__1** pasó el tiempo practicando con su espada corta.', 3, 0, 0, 3, NULL),
-               (140, '**player__1** pasó el tiempo practicando con su garrote.', 3, 0, 0, 4, NULL),
-               (141, '**player__1** pasó el tiempo practicando con su hacha.', 3, 0, 0, 5, NULL),
-               (142, '**player__1** pasó el tiempo practicando con su hoz.', 3, 0, 0, 6, NULL),
-               (143, '**player__1** pasó el tiempo practicando con su machete.', 3, 0, 0, 7, NULL),
-               (144, '**player__1** pasó el tiempo practicando con su martillo.', 3, 0, 0, 8, NULL),
-               (145, '**player__1** pasó el tiempo practicando con su pala.', 3, 0, 0, 9, NULL),
-               (146, '**player__1** pasó el tiempo practicando con su espada larga.', 3, 0, 0, 10, NULL),
-               (147, '**player__1** pasó el tiempo practicando con su espada ropera.', 3, 0, 0, 11, NULL),
-               (148, '**player__1** pasó el tiempo practicando con su lanza.', 3, 0, 0, 12, NULL),
-               (149, '**player__1** pasó el tiempo practicando con su maza.', 3, 0, 0, 13, NULL),
-               (150, '**player__1** pasó el tiempo practicando con su tridente.', 3, 0, 0, 14, NULL),
-               (151, '**player__1** pasó el tiempo practicando con su arco corto.', 3, 0, 0, 15, NULL),
-               (152, '**player__1** pasó el tiempo practicando con su ballesta ligera.', 3, 0, 0, 16, NULL),
-               (153, '**player__1** pasó el tiempo practicando con su jabalina.', 3, 0, 0, 17, NULL),
-               (154, '**player__1** pasó el tiempo practicando con su resortera.', 3, 0, 0, 18, NULL),
-               (155, '**player__1** pasó el tiempo practicando con su arco largo.', 3, 0, 0, 19, NULL),
-               (156, '**player__1** pasó el tiempo practicando con su ballesta pesada.', 3, 0, 0, 20, NULL),
+               -- Weapon Loot from Corpse (137)
+               (137, '**player__1** tomó /weapon/ del cuerpo de **player__2**.', 2, 0, 0, NULL, NULL),
 
-               -- Item Pick Ups (157-161)
-               (157, '**player__1** tomó un kit de primeros auxilios.', 2, 0, 0, NULL, 1),
-               (158, '**player__1** tomó comida completa.', 2, 0, 0, NULL, 2),
-               (159, '**player__1** tomó una cantimplora.', 2, 0, 0, NULL, 3),
-               (160, '**player__1** tomó un escudo.', 2, 0, 0, NULL, 4),
-               (161, '**player__1** recolectó frutas silvestres.', 2, 0, 0, NULL, 5),
+               -- Item Pick Ups (138-144)
+               (138, '**player__1** tomó un kit de primeros auxilios.', 2, 0, 0, NULL, 1),
+               (139, '**player__1** tomó comida completa.', 2, 0, 0, NULL, 2),
+               (140, '**player__1** tomó una cantimplora.', 2, 0, 0, NULL, 3),
+               (141, '**player__1** tomó un escudo.', 2, 0, 0, NULL, 4),
+               (142, '**player__1** recolectó frutas silvestres.', 2, 0, 0, NULL, 5),
+               (143, '**player__1** tomó unos medicamentos.', 2, 0, 0, NULL, 6),
+               (144, '**player__1** recolectó hierbas medicinales.', 2, 0, 0, NULL, 7),
 
-               -- Weapon Loot from Corpse (167)
-               (167, '**player__1** tomó /weapon/ del cuerpo de **player__2**.', 2, 0, 0, NULL, NULL),
+               -- Practice (145-164)
+               (145, '**player__1** pasó el tiempo practicando con su cuchillo.', 3, 0, 0, 1, NULL),
+               (146, '**player__1** pasó el tiempo practicando con su daga.', 3, 0, 0, 2, NULL),
+               (147, '**player__1** pasó el tiempo practicando con su espada corta.', 3, 0, 0, 3, NULL),
+               (148, '**player__1** pasó el tiempo practicando con su garrote.', 3, 0, 0, 4, NULL),
+               (149, '**player__1** pasó el tiempo practicando con su hacha.', 3, 0, 0, 5, NULL),
+               (150, '**player__1** pasó el tiempo practicando con su hoz.', 3, 0, 0, 6, NULL),
+               (151, '**player__1** pasó el tiempo practicando con su machete.', 3, 0, 0, 7, NULL),
+               (152, '**player__1** pasó el tiempo practicando con su martillo.', 3, 0, 0, 8, NULL),
+               (153, '**player__1** pasó el tiempo practicando con su pala.', 3, 0, 0, 9, NULL),
+               (154, '**player__1** pasó el tiempo practicando con su espada larga.', 3, 0, 0, 10, NULL),
+               (155, '**player__1** pasó el tiempo practicando con su espada ropera.', 3, 0, 0, 11, NULL),
+               (156, '**player__1** pasó el tiempo practicando con su lanza.', 3, 0, 0, 12, NULL),
+               (157, '**player__1** pasó el tiempo practicando con su maza.', 3, 0, 0, 13, NULL),
+               (158, '**player__1** pasó el tiempo practicando con su tridente.', 3, 0, 0, 14, NULL),
+               (159, '**player__1** pasó el tiempo practicando con su arco corto.', 3, 0, 0, 15, NULL),
+               (160, '**player__1** pasó el tiempo practicando con su ballesta ligera.', 3, 0, 0, 16, NULL),
+               (161, '**player__1** pasó el tiempo practicando con su jabalina.', 3, 0, 0, 17, NULL),
+               (162, '**player__1** pasó el tiempo practicando con su resortera.', 3, 0, 0, 18, NULL),
+               (163, '**player__1** pasó el tiempo practicando con su arco largo.', 3, 0, 0, 19, NULL),
+               (164, '**player__1** pasó el tiempo practicando con su ballesta pesada.', 3, 0, 0, 20, NULL),
 
-               -- Rest (162-164)
-               (162, '**player__1** descansó en su escondite.', 5, 0, 0, NULL, NULL),
-               (163, '**player__1** comió y recuperó energías.', 5, 0, 0, NULL, 2),
-               (164, '**player__1** bebió su agua y recuperó energías.', 5, 0, 0, NULL, 3),
+               -- Rest (165-167)
+               (165, '**player__1** descansó en su escondite.', 4, 0, 0, NULL, NULL),
+               (166, '**player__1** comió y recuperó energías.', 4, 0, 0, NULL, 2),
+               (167, '**player__1** bebió su agua y recuperó energías.', 4, 0, 0, NULL, 3),
 
-               -- Item Usage (165-166)
-               (165, '**player__1** usó un kit de primeros auxilios para tratarse las heridas.', 6, 0, 0, NULL, 1),
-               (166, '**player__1** llenó su cantimplora.', 6, 0, 0, NULL, 3);""")
+               -- Item Usage (168-171)
+               (168, '**player__1** usó un kit de primeros auxilios para tratarse las heridas.', 5, 0, 0, NULL, 1),
+               (169, '**player__1** llenó su cantimplora.', 5, 0, 0, NULL, 3),
+               (170, '**player__1** se medicó la enfermedad.', 5, 0, 0, NULL, 6),
+               (171, '**player__1** usó las hierbas medicinales para hacer unos medicamentos.', 5, 0, 0, NULL, 7);""")
 database.commit()
 
 
@@ -469,7 +477,7 @@ class db_battleroyale(commands.Cog):
             if players < 2 or players > 50:
                 await interaction.followup.send("La cantidad de jugadores debe estar entre 2 y 50.")
                 return
-            # 1) Seleccionar jugadores por ID ascendente
+            # 1. Cargar jugadores
             self.cursor.execute("""
                 SELECT p.id, p.name, g.letter_a, g.letter_b
                 FROM br_players p
@@ -482,7 +490,7 @@ class db_battleroyale(commands.Cog):
                 await interaction.followup.send("No hay suficientes jugadores registrados para esa cantidad.")
                 return
             alive_players = [{"id": r[0], "name": r[1], "letter_a": r[2], "letter_b": r[3]} for r in pool]
-            # 2) Cargar eventos
+            # 2. Cargar eventos
             self.cursor.execute("SELECT event_text FROM br_events WHERE category = 1 AND alive = 1 AND dead = 1 AND weapon_id IS NULL;")
             kill_events = [row[0] for row in self.cursor.fetchall()]
             self.cursor.execute("SELECT event_text, weapon_id FROM br_events WHERE category = 1 AND alive = 1 AND dead = 1 AND weapon_id IS NOT NULL;")
@@ -507,44 +515,42 @@ class db_battleroyale(commands.Cog):
             for row in self.cursor.fetchall():
                 practice_events_by_weapon.setdefault(row[1], []).append(row[0])
             self.cursor.execute("SELECT id, event_text, item_id FROM br_events WHERE category = 2 AND item_id IS NOT NULL;")
-            item_pickup_events = [(row[0], row[1], row[2]) for row in self.cursor.fetchall()]  # (id, text, item_id)
-            # Separar item pickups de La Masacre (157-160) y de idle (161)
-            masacre_item_pickups = [(eid, et, iid) for eid, et, iid in item_pickup_events if eid in (157, 158, 159, 160)]
-            idle_item_pickups = [(eid, et, iid) for eid, et, iid in item_pickup_events if eid == 161]
-            # Plantillas de eventos de saqueo de arma de cuerpo (cat 2 sin weapon_id ni item_id)
+            item_pickup_events = [(row[0], row[1], row[2]) for row in self.cursor.fetchall()]
+            masacre_item_pickups = [(eid, et, iid) for eid, et, iid in item_pickup_events if eid in (138, 139, 140, 141, 143)]
+            idle_item_pickups = [(eid, et, iid) for eid, et, iid in item_pickup_events if eid in (142, 143, 144)]
             self.cursor.execute("SELECT event_text FROM br_events WHERE category = 2 AND weapon_id IS NULL AND item_id IS NULL;")
             weapon_loot_templates = [row[0] for row in self.cursor.fetchall()]
-            self.cursor.execute("SELECT id, event_text, item_id FROM br_events WHERE category = 5;")
-            rest_events_raw = [(row[0], row[1], row[2]) for row in self.cursor.fetchall()]  # (id, text, item_id)
-            rest_events = [row[1] for row in rest_events_raw if row[2] is None]  # solo descanso genérico
-            # Cachear templates de descanso con item por ID
+            self.cursor.execute("SELECT id, event_text, item_id FROM br_events WHERE category = 4;")
+            rest_events_raw = [(row[0], row[1], row[2]) for row in self.cursor.fetchall()]
+            rest_events = [row[1] for row in rest_events_raw if row[2] is None]
             rest_event_by_id = {row[0]: row[1] for row in rest_events_raw}
-            self.cursor.execute("SELECT id, event_text, item_id FROM br_events WHERE category = 6;")
-            item_usage_events = {row[0]: (row[1], row[2]) for row in self.cursor.fetchall()}  # id -> (text, item_id)
+            self.cursor.execute("SELECT id, event_text, item_id FROM br_events WHERE category = 5;")
+            item_usage_events = {row[0]: (row[1], row[2]) for row in self.cursor.fetchall()}
             self.cursor.execute("SELECT id, item_name, item_value FROM br_items;")
             items_data = {row[0]: row[1] for row in self.cursor.fetchall()}
             self.cursor.execute("SELECT id, item_value FROM br_items;")
-            items_value = {row[0]: row[1] for row in self.cursor.fetchall()}  # id -> value
-            # Tabla declarativa de efectos de items en descanso:
-            # (evento_id, item_requerido, item_a_remover, item_a_añadir, cura_herida, fuente)
+            items_value = {row[0]: row[1] for row in self.cursor.fetchall()}
             rest_item_table = []
-            if 165 in item_usage_events:
-                rest_item_table.append({"id": 165, "template": item_usage_events[165][0], "requires_item": 1, "requires_wounded": True, "remove": 1, "add": None, "cures": True})
-            if 163 in rest_event_by_id:
-                rest_item_table.append({"id": 163, "template": rest_event_by_id[163], "requires_item": 2, "requires_wounded": False, "remove": 2, "add": None, "cures": False})
-            if 164 in rest_event_by_id:
-                rest_item_table.append({"id": 164, "template": rest_event_by_id[164], "requires_item": 3, "requires_wounded": False, "remove": None, "add": None, "cures": False, "empties_cantimplora": True})
-            if 166 in item_usage_events:
-                rest_item_table.append({"id": 166, "template": item_usage_events[166][0], "requires_item": 3, "requires_wounded": False, "remove": None, "add": None, "cures": False, "fills_cantimplora": True})
-            # Tabla declarativa de efectos de item pickups en idle:
-            # evt_id -> (item_a_remover, item_a_añadir)
+            if 168 in item_usage_events:
+                rest_item_table.append({"id": 168, "template": item_usage_events[168][0], "requires_item": 1, "requires_wounded": True, "remove": 1, "add": None, "cures": True})
+            if 166 in rest_event_by_id:
+                rest_item_table.append({"id": 166, "template": rest_event_by_id[166], "requires_item": 2, "requires_wounded": False, "remove": 2, "add": None, "cures": False})
+            if 167 in rest_event_by_id:
+                rest_item_table.append({"id": 167, "template": rest_event_by_id[167], "requires_item": 3, "requires_wounded": False, "remove": None, "add": None, "cures": False, "empties_cantimplora": True})
+            if 169 in item_usage_events:
+                rest_item_table.append({"id": 169, "template": item_usage_events[169][0], "requires_item": 3, "requires_wounded": False, "remove": None, "add": None, "cures": False, "fills_cantimplora": True})
+            if 170 in item_usage_events:
+                rest_item_table.append({"id": 170, "template": item_usage_events[170][0], "requires_item": 6, "requires_wounded": False, "remove": 6, "add": None, "cures": False, "requires_sick": True, "cures_sick": True})
+            if 171 in item_usage_events:
+                rest_item_table.append({"id": 171, "template": item_usage_events[171][0], "requires_item": 7, "requires_wounded": False, "remove": 7, "add": 6, "cures": False})
             idle_item_effects = {
-                161: (None, 5),   # recolectó frutas → recibe Comida simple
+                142: (None, 5),   # Recolectó frutas, recibe Comida simple
+                143: (None, 6),   # Tomó medicamentos, recibe Medicamentos
+                144: (None, 7),   # Recolectó hierbas, recibe Hierbas medicinales
             }
             self.cursor.execute("SELECT id, weapon_name, weapon_bonus, weapon_kind FROM br_weapons;")
             weapons_data = {row[0]: {"weapon_name": row[1], "weapon_bonus": row[2], "weapon_kind": row[3]} for row in self.cursor.fetchall()}
-            # Pre-cachear weapon_tiers (estático, no recalcular en cada iteración)
-            # >>> PROBABILIDAD: Tier de arma <<<
+            # Probabilidades: Tiers de arma
             tier_weights = {(1,1): 0.4, (2,2): 0.3, (1,2): 0.2, (2,3): 0.1}
             weapon_tiers = {}
             for evt_text, wid in weapon_events:
@@ -559,25 +565,25 @@ class db_battleroyale(commands.Cog):
                 return
             def genderize(text: str, letter_a: str, letter_b: str) -> str:
                 return text.replace('@', letter_a).replace('$', letter_b)
-            pages = []       # lista de (page_name, page_text)
+            pages = []
             stage_number = 0
             kill_counts = {p["id"]: 0 for p in alive_players}  # kills por jugador
-            wounded_ids = {}    # id -> True si el jugador está herido
-            recent_deaths = []  # muertes desde el último resumen
-            death_order = []    # lista global de IDs en orden de muerte
+            wounded_ids = {}    # id, True si el jugador está herido
+            recent_deaths = []  # muertes desde el último Tributos Caídos
+            death_order = []    # lista total de IDs en orden de muerte
             all_players_map = {p["id"]: p for p in alive_players}
-            player_weapons = {}  # id -> {"weapon_id", "weapon_name", "weapon_bonus", "weapon_kind"}
-            player_practice = {}  # id -> {weapon_id: bonus}
-            player_fatigue = {p["id"]: 0 for p in alive_players}  # puntos de fatiga (combate=2, otros=1)
-            pending_weapon_swap = {}  # pid -> {"old_weapon": dict|None, "new_weapon": dict, "victim_name": str}
+            player_weapons = {}  # id {"weapon_id", "weapon_name", "weapon_bonus", "weapon_kind"}
+            player_practice = {}  # id {weapon_id: bonus}
+            player_fatigue = {p["id"]: 0 for p in alive_players}  # puntos de fatiga (combate=2, demás=1)
+            pending_weapon_swap = {}  # pid {"old_weapon": dict|None, "new_weapon": dict, "victim_name": str}
             dropped_weapons = []  # [{"weapon_id", "weapon_name", "weapon_bonus", "weapon_kind", "victim_name"}]
-            player_weapon_kills = {}  # pid -> {weapon_id: count of weapon-event kills}
-            player_items = {}  # pid -> [item_id, ...] (max 2 items)
-            cantimplora_empty = {}  # pid -> True si la cantimplora está vacía
+            player_weapon_kills = {}  # pid {weapon_id: count of weapon-event kills}
+            player_items = {}  # pid [item_id, ...] (max 2 items)
+            cantimplora_empty = {}  # pid, True si la cantimplora está vacía
             dropped_items = []  # [{"item_id", "item_name", "victim_name"}]
-            wounded_duration = {}  # pid -> eventos consecutivos herido sin descanso
-            sick_ids = {}  # pid -> True si el jugador está enfermo
-            rest_cooldown = {}  # pid -> eventos restantes sin poder descansar (ni sumar fatiga)
+            wounded_duration = {}  # pid, eventos consecutivos herido sin descanso
+            sick_ids = {}  # pid, True si el jugador está enfermo
+            rest_cooldown = {}  # pid, eventos restantes sin poder descansar (ni sumar fatiga)
             weapon_def_article = {wid: ("la" if art == "una" else "el") for wid, art in weapon_article.items()}
             tired_labels = {1: "Cansad", 2: "Agotad"}
             tired_announce = {1: "está cansad", 2: "está agotad"}
@@ -602,6 +608,12 @@ class db_battleroyale(commands.Cog):
                 return weapon["weapon_bonus"] + player_practice.get(pid, {}).get(weapon["weapon_id"], 0)
             def player_has_item(pid, item_id):
                 return item_id in player_items.get(pid, [])
+            # Items que pueden acumularse en el inventario
+            stackable_items = {6: 2}  # Medicamentos hasta 2
+            def can_hold_another(pid, item_id):
+                """¿Puede el jugador aceptar una unidad más de este item?"""
+                max_stack = stackable_items.get(item_id, 1)
+                return player_items.get(pid, []).count(item_id) < max_stack
             def get_inventory_total(pid):
                 """Total de objetos (items + arma). Máximo 2."""
                 return len(player_items.get(pid, [])) + (1 if player_weapons.get(pid) else 0)
@@ -632,7 +644,7 @@ class db_battleroyale(commands.Cog):
                     player_weapons.pop(pid, None)
             def can_acquire_item(pid, item_id):
                 """¿El jugador puede adquirir este item (posiblemente tirando el de menor valor)?"""
-                if player_has_item(pid, item_id):
+                if not can_hold_another(pid, item_id):
                     return False
                 if get_inventory_total(pid) < 2:
                     return True
@@ -641,7 +653,7 @@ class db_battleroyale(commands.Cog):
                 return lowest is not None and new_value > lowest[0]
             def add_item(pid, item_id):
                 """Añade item al inventario aplicando regla de 2 objetos. Tira el menor si es necesario."""
-                if player_has_item(pid, item_id):
+                if not can_hold_another(pid, item_id):
                     return False
                 if get_inventory_total(pid) >= 2:
                     new_value = items_value.get(item_id, 0)
@@ -673,7 +685,7 @@ class db_battleroyale(commands.Cog):
                     wounded_duration[pid] = 0
                     return ""
                 if sick_ids.get(pid, False):
-                    return ""  # ya está enfermo
+                    return "" # Enfermo
                 wounded_duration[pid] = wounded_duration.get(pid, 0) + 1
                 if wounded_duration[pid] >= 3:
                     sick_ids[pid] = True
@@ -686,7 +698,7 @@ class db_battleroyale(commands.Cog):
                     player_fatigue[pid] = 0
                     update_wounded_duration(actor, True)
                 else:
-                    # Si tiene cooldown de comida/bebida, no suma fatiga
+                    # Si tiene cooldown de comida/agua, no suma fatiga
                     if rest_cooldown.get(pid, 0) > 0:
                         rest_cooldown[pid] -= 1
                     else:
@@ -700,17 +712,14 @@ class db_battleroyale(commands.Cog):
                 if pid not in pending_weapon_swap:
                     return ""
                 info = pending_weapon_swap.pop(pid)
-                if is_combat and random.random() < 0.20:  # >>> PROBABILIDAD: 20% fallo de swap en combate <<<
-                    # Rechaza el cambio: arma nueva va a dropped
+                if is_combat and random.random() < 0.20:  # Probabilidades: 20% de no swap en combate
                     dropped_weapons.append({"weapon_id": info["new_weapon"]["weapon_id"], "weapon_name": info["new_weapon"]["weapon_name"], "weapon_bonus": info["new_weapon"]["weapon_bonus"], "weapon_kind": info["new_weapon"]["weapon_kind"], "victim_name": info["victim_name"]})
-                    # Restaurar arma vieja
                     if info["old_weapon"]:
                         player_weapons[pid] = info["old_weapon"]
                     else:
                         player_weapons.pop(pid, None)
                     return ""
                 else:
-                    # Confirma el cambio: arma vieja va a dropped
                     if info["old_weapon"]:
                         dropped_weapons.append({"weapon_id": info["old_weapon"]["weapon_id"], "weapon_name": info["old_weapon"]["weapon_name"], "weapon_bonus": info["old_weapon"]["weapon_bonus"], "weapon_kind": info["old_weapon"]["weapon_kind"], "victim_name": None})
                     return ""
@@ -727,13 +736,12 @@ class db_battleroyale(commands.Cog):
                     if dw_eff > best_eff:
                         best_eff = dw_eff
                         best_idx = i
-                if best_idx is not None and random.random() < 0.50:  # >>> PROBABILIDAD: 50% pickup arma del suelo <<<
+                if best_idx is not None and random.random() < 0.50:  # Probabilidades: Pickup arma del suelo
                     picked = dropped_weapons.pop(best_idx)
                     old_w = player_weapons.get(pid)
                     if old_w:
                         dropped_weapons.append({"weapon_id": old_w["weapon_id"], "weapon_name": old_w["weapon_name"], "weapon_bonus": old_w["weapon_bonus"], "weapon_kind": old_w["weapon_kind"], "victim_name": None})
                     else:
-                        # Sin arma: hacer hueco si inventario está lleno
                         make_room_for_weapon(pid)
                     picked_w = {"weapon_id": picked["weapon_id"], "weapon_name": picked["weapon_name"], "weapon_bonus": picked["weapon_bonus"], "weapon_kind": picked["weapon_kind"]}
                     player_weapons[pid] = picked_w
@@ -762,7 +770,6 @@ class db_battleroyale(commands.Cog):
                     return None
                 killer_w = player_weapons.get(killer["id"])
                 if not killer_w:
-                    # Killer no tiene arma → siempre toma (las armas tienen prioridad)
                     make_room_for_weapon(killer["id"])
                     player_weapons[killer["id"]] = victim_w.copy()
                     pending_weapon_swap[killer["id"]] = {"old_weapon": None, "new_weapon": victim_w.copy(), "victim_name": victim["name"]}
@@ -770,10 +777,8 @@ class db_battleroyale(commands.Cog):
                 killer_eff = get_effective_weapon_value(killer["id"], killer_w)
                 victim_w_eff = victim_w["weapon_bonus"] + player_practice.get(killer["id"], {}).get(victim_w["weapon_id"], 0)
                 if victim_w_eff <= killer_eff:
-                    # No es mejor - arma del victim va a dropped
                     dropped_weapons.append({"weapon_id": victim_w["weapon_id"], "weapon_name": victim_w["weapon_name"], "weapon_bonus": victim_w["weapon_bonus"], "weapon_kind": victim_w["weapon_kind"], "victim_name": victim["name"]})
                     return None
-                # Arma mejor - cambiar inmediatamente
                 old_weapon = killer_w.copy()
                 player_weapons[killer["id"]] = victim_w.copy()
                 pending_weapon_swap[killer["id"]] = {"old_weapon": old_weapon, "new_weapon": victim_w.copy(), "victim_name": victim["name"]}
@@ -784,15 +789,12 @@ class db_battleroyale(commands.Cog):
                 if not victim_inv:
                     return text
                 for iid in victim_inv:
-                    if not player_has_item(killer["id"], iid) and add_item(killer["id"], iid):
+                    if can_hold_another(killer["id"], iid) and add_item(killer["id"], iid):
                         item_name = items_data.get(iid, "?")
                         text = text.rstrip('.') + f"; **{killer['name']}** tomó {item_name.lower()} del cuerpo de **{victim['name']}**."
                         player_items.get(victim["id"], []).remove(iid)
-                        # Transferir estado de cantimplora vacía
                         if iid == 3 and cantimplora_empty.get(victim["id"], False):
                             cantimplora_empty[killer["id"]] = True
-                    # Si no pudo tomar (ya tiene o inventario lleno), queda para dropped
-                # Items restantes del victim van al suelo
                 for iid in player_items.get(victim["id"], []):
                     dropped_items.append({"item_id": iid, "item_name": items_data.get(iid, "?"), "victim_name": victim["name"]})
                 player_items.pop(victim["id"], None)
@@ -803,8 +805,8 @@ class db_battleroyale(commands.Cog):
                 pid = player["id"]
                 if not dropped_items:
                     return text
-                eligible = [(i, di) for i, di in enumerate(dropped_items) if not player_has_item(pid, di["item_id"])]
-                if eligible and random.random() < 0.50:  # >>> PROBABILIDAD: 50% pickup item del suelo <<<
+                eligible = [(i, di) for i, di in enumerate(dropped_items) if can_hold_another(pid, di["item_id"])]
+                if eligible and random.random() < 0.50:  # Probabilidades: Pickup item del suelo
                     idx, picked = random.choice(eligible)
                     dropped_items.pop(idx)
                     if add_item(pid, picked["item_id"]):
@@ -823,7 +825,7 @@ class db_battleroyale(commands.Cog):
                 return f"{phase} {day}"
             def build_summary(is_final=False):
                 lines = []
-                # Muertos recientes (solo desde el último resumen)
+                # Muertos recientes
                 if recent_deaths:
                     lines.append("**Caídos:**")
                     for d in recent_deaths:
@@ -831,7 +833,7 @@ class db_battleroyale(commands.Cog):
                         victim_letter = d["victim_letter_a"]
                         kills_txt = f"{k} baja{'s' if k != 1 else ''}"
                         lines.append(f"- **{d['name']}**: {kills_txt}, asesinad{victim_letter} por *{d['killed_by']}* en *{d['stage']}*.")
-                # Supervivientes (no mostrar en el resumen final)
+                # Supervivientes
                 if not is_final:
                     alive_ids = [p["id"] for p in alive_players]
                     if alive_ids:
@@ -839,14 +841,11 @@ class db_battleroyale(commands.Cog):
                         for pid in alive_ids:
                             p = all_players_map[pid]
                             k = kill_counts[pid]
-                            # Formato: (items, arma, práctica; estados)
                             gear_parts = []
                             condition_parts = []
-                            # Items
                             p_items = player_items.get(pid, [])
                             for iid in p_items:
                                 gear_parts.append(items_data.get(iid, "?").lower())
-                            # Arma y práctica
                             weapon = player_weapons.get(pid)
                             if weapon:
                                 practice_b = player_practice.get(pid, {}).get(weapon["weapon_id"], 0)
@@ -854,7 +853,6 @@ class db_battleroyale(commands.Cog):
                                     gear_parts.append(f"{weapon['weapon_name'].lower()}, {practice_b} práctica{'s' if practice_b > 1 else ''}")
                                 else:
                                     gear_parts.append(weapon["weapon_name"].lower())
-                            # Estados
                             if wounded_ids.get(pid, False):
                                 condition_parts.append(f"herid{p['letter_a']}")
                             if sick_ids.get(pid, False):
@@ -862,7 +860,6 @@ class db_battleroyale(commands.Cog):
                             t_lvl = get_tired_level(pid)
                             if t_lvl >= 1:
                                 condition_parts.append(f"{tired_labels[t_lvl].lower()}{p['letter_a']}")
-                            # Construir paréntesis
                             if gear_parts and condition_parts:
                                 status_txt = f" ({', '.join(gear_parts)}; {', '.join(condition_parts)})"
                             elif gear_parts:
@@ -874,7 +871,6 @@ class db_battleroyale(commands.Cog):
                             kills_txt = f"{k} baja{'s' if k != 1 else ''}."
                             lines.append(f"- **{p['name']}**{status_txt}: {kills_txt}")
                 return "\n".join(lines)
-            # 3) Bucle de rondas hasta que quede 1 jugador
             while len(alive_players) > 1:
                 stage_number += 1
                 stage_name = get_stage_name(stage_number)
@@ -895,22 +891,21 @@ class db_battleroyale(commands.Cog):
                         for p in waiting
                     )
                     can_rest = phase and bool(rest_events) and len(waiting) >= 1
-                    # >>> PROBABILIDADES BASE POR FASE (jugadores armados) <<<
+                    # Probabilidades base por stage (con practice)
                     base_probs = {
                         "Mañana":  {"kill": 0.23, "rest": 0.15, "idle": 0.47, "practice": 0.15},
                         "Tarde":   {"kill": 0.30, "rest": 0.10, "idle": 0.40, "practice": 0.20},
                         "Noche":   {"kill": 0.10, "rest": 0.60, "idle": 0.20, "practice": 0.10},
                     }
-                    # >>> PROBABILIDADES BASE POR FASE (jugadores desarmados) <<<
+                    # Probabilidade base por stage (sin practice)
                     unarmed_probs = {
                         "Mañana":  {"kill": 0.23, "rest": 0.15, "idle": 0.62},
                         "Tarde":   {"kill": 0.30, "rest": 0.20, "idle": 0.50},
                         "Noche":   {"kill": 0.10, "rest": 0.70, "idle": 0.20},
                     }
-                    # Determinar acción por pesos
                     weights = {}
                     if stage_name == "La Masacre":
-                        # >>> PROBABILIDADES DE LA MASACRE <<<
+                        # Probabilidades La Masacre
                         if can_idle: weights["idle"] = 0.25
                         if can_weapon: weights["weapon"] = 0.35
                         if can_kill: weights["kill"] = 0.40
@@ -920,17 +915,17 @@ class db_battleroyale(commands.Cog):
                             w = base_probs[phase].copy()
                         else:
                             w = unarmed_probs[phase].copy()
-                        # >>> PROBABILIDAD: cuando quedan solo 2 jugadores vivos <<<
+                        # Probabilidades Finalistas
                         if len(alive_players) == 2 and can_kill:
                             w = {"kill": 0.50, "rest": 0.10, "practice": 0.20, "idle": 0.20}
-                        # Ajuste por cansancio
-                        if max_tired >= 2:  # Agotado: +10% rest, -10% practice/idle
+                        # Probabilidades jugadores cansados/agotados
+                        if max_tired >= 2:
                             w["rest"] = w.get("rest", 0) + 0.10
                             if "practice" in w:
                                 w["practice"] = max(0, w["practice"] - 0.10)
                             else:
                                 w["idle"] = max(0, w["idle"] - 0.10)
-                        elif max_tired == 1:  # Cansado: +5% rest, -5% practice/idle
+                        elif max_tired == 1:
                             w["rest"] = w.get("rest", 0) + 0.05
                             if "practice" in w:
                                 w["practice"] = max(0, w["practice"] - 0.05)
@@ -963,22 +958,21 @@ class db_battleroyale(commands.Cog):
                         if stage_name == "La Masacre":
                             text = f"**{actor['name']}** escapó de la Cornucopia."
                         else:
-                            # >>> PROBABILIDAD: 15% de que idle sea un item pickup (evento 161 u otros) <<<
+                            # Probabilidades: Idle como Item Pickup
                             idle_item_chance = 0.15
                             pid_idle = actor["id"]
                             idle_eligible = [
                                 (eid, et, iid) for eid, et, iid in idle_item_pickups
                                 if can_acquire_item(pid_idle, iid)
                             ]
-                            # Evento 166: llenar cantimplora vacía (durante idle, buscando agua)
-                            if player_has_item(pid_idle, 3) and cantimplora_empty.get(pid_idle, False) and 166 in item_usage_events:
-                                idle_eligible.append((166, item_usage_events[166][0], 3))
+                            # Rellenar cantimplora (Idle)
+                            if player_has_item(pid_idle, 3) and cantimplora_empty.get(pid_idle, False) and 169 in item_usage_events:
+                                idle_eligible.append((169, item_usage_events[169][0], 3))
                             if idle_eligible and random.random() < idle_item_chance:
                                 evt_id, template, item_id = random.choice(idle_eligible)
                                 text = template.replace("player__1", actor["name"])
                                 text = genderize(text, actor["letter_a"], actor["letter_b"])
-                                if evt_id == 166:
-                                    # Rellenar cantimplora
+                                if evt_id == 169:
                                     cantimplora_empty[pid_idle] = False
                                 else:
                                     remove_id, add_id = idle_item_effects.get(evt_id, (None, None))
@@ -1002,12 +996,12 @@ class db_battleroyale(commands.Cog):
                     elif action == "weapon":
                         actor = waiting.pop()
                         resolve_pending_swap(actor, False)
-                        # >>> PROBABILIDAD: 20% de que un Weapon Pick Up sea un Item Pick Up <<<
+                        # Probabilidades: Weapon Pick Up como Item Pick Up
                         item_pickup_chance = 0.20
                         pid_wp = actor["id"]
                         eligible_item_pickups = [
                             (eid, et, iid) for eid, et, iid in masacre_item_pickups
-                            if not player_has_item(pid_wp, iid)
+                            if can_hold_another(pid_wp, iid)
                         ]
                         if eligible_item_pickups and random.random() < item_pickup_chance:
                             evt_id, template, item_id = random.choice(eligible_item_pickups)
@@ -1054,7 +1048,7 @@ class db_battleroyale(commands.Cog):
                         actor = waiting.pop()
                         resolve_pending_swap(actor, False)
                         pid_rest = actor["id"]
-                        # Si tiene cooldown de comida/bebida, no puede descansar → hacer idle
+                        # Cooldown de comida/bebida, no puede descansar, hacer idle
                         if rest_cooldown.get(pid_rest, 0) > 0:
                             template = random.choice(idle_events)
                             text = template.replace("player__1", actor["name"])
@@ -1064,15 +1058,16 @@ class db_battleroyale(commands.Cog):
                             if weapon_pickup_text:
                                 events_out.append(f"• {weapon_pickup_text}")
                         else:
-                            # Filtrar eventos de descanso con item aplicables a este jugador
+                            # Eventos de descanso con item específico
                             applicable = [
                                 entry for entry in rest_item_table
                                 if player_has_item(pid_rest, entry["requires_item"])
                                 and (not entry["requires_wounded"] or wounded_ids.get(pid_rest, False))
+                                and (not entry.get("requires_sick") or sick_ids.get(pid_rest, False))
                                 and (not entry.get("empties_cantimplora") or not cantimplora_empty.get(pid_rest, False))
                                 and (not entry.get("fills_cantimplora") or cantimplora_empty.get(pid_rest, False))
                             ]
-                            # >>> PROBABILIDAD: 60% de usar un evento de item en descanso (si hay items) <<<
+                            # Probabilidades: Usar un evento de item en descanso
                             if applicable and random.random() < 0.60:
                                 chosen = random.choice(applicable)
                                 template = chosen["template"]
@@ -1084,16 +1079,17 @@ class db_battleroyale(commands.Cog):
                                     add_item(pid_rest, chosen["add"])
                                 if chosen["cures"]:
                                     wounded_ids.pop(pid_rest, None)
-                                    sick_ids.pop(pid_rest, None)
                                     wounded_duration.pop(pid_rest, None)
+                                if chosen.get("cures_sick"):
+                                    sick_ids.pop(pid_rest, None)
                                 if chosen.get("empties_cantimplora"):
                                     cantimplora_empty[pid_rest] = True
                                 if chosen.get("fills_cantimplora"):
                                     cantimplora_empty[pid_rest] = False
-                                # Cooldown: comida → 3 eventos, bebida → 2 eventos sin descanso ni fatiga
-                                if chosen["id"] == 163:  # comió
+                                # Cooldown: comida, 3 eventos; bebida, 2 eventos; sin descanso ni fatiga
+                                if chosen["id"] == 166:
                                     rest_cooldown[pid_rest] = 3
-                                elif chosen["id"] == 164:  # bebió
+                                elif chosen["id"] == 167:
                                     rest_cooldown[pid_rest] = 2
                             else:
                                 template = random.choice(rest_events)
@@ -1110,21 +1106,21 @@ class db_battleroyale(commands.Cog):
                         s1 = sick_ids.get(p1["id"], False)
                         s2 = sick_ids.get(p2["id"], False)
                         w1_original, w2_original = w1, w2
-                        # Combate: tiran 1-6 + bonus arma + práctica - cansancio, wounded resta 3, enfermo resta 2
+                        # Combate: 1d6 + Weapon bonus + Practice - Cansancio - Wounded - Sick
                         bonus1 = player_weapons.get(p1["id"], {}).get("weapon_bonus", 0)
                         pw1_data = player_weapons.get(p1["id"])
                         if pw1_data:
                             bonus1 += player_practice.get(p1["id"], {}).get(pw1_data["weapon_id"], 0)
                         bonus1 -= get_tired_level(p1["id"])
                         if s1:
-                            bonus1 -= 2  # penalización por enfermedad
+                            bonus1 -= 2
                         bonus2 = player_weapons.get(p2["id"], {}).get("weapon_bonus", 0)
                         pw2_data = player_weapons.get(p2["id"])
                         if pw2_data:
                             bonus2 += player_practice.get(p2["id"], {}).get(pw2_data["weapon_id"], 0)
                         bonus2 -= get_tired_level(p2["id"])
                         if s2:
-                            bonus2 -= 2  # penalización por enfermedad
+                            bonus2 -= 2
                         while True:
                             roll1 = random.randint(1, 6) + bonus1 - (3 if w1 else 0)
                             roll2 = random.randint(1, 6) + bonus2 - (3 if w2 else 0)
@@ -1135,14 +1131,14 @@ class db_battleroyale(commands.Cog):
                                     killer, victim = p2, p1
                                 killer_weapon = player_weapons.get(killer["id"])
                                 was_weapon_event = False
-                                if killer_weapon and killer_weapon["weapon_id"] in weapon_kill_events and random.random() < 0.80:  # >>> PROBABILIDAD: 80% evento de arma en kill <<<
+                                if killer_weapon and killer_weapon["weapon_id"] in weapon_kill_events and random.random() < 0.90:  # Probabilidades: Evento de arma en kill
                                     template = random.choice(weapon_kill_events[killer_weapon["weapon_id"]])
                                     was_weapon_event = True
                                 else:
                                     template = random.choice(kill_events)
                                 text = template.replace("player__1", killer["name"]).replace("player__2", victim["name"])
                                 text = genderize(text, victim["letter_a"], victim["letter_b"])
-                                # Estado de la víctima (cansado/herido)
+                                # Estado del victim (cansad@/herid@)
                                 victim_was_wounded_before = w1_original if victim["id"] == p1["id"] else w2_original
                                 victim_tired_lvl = get_tired_level(victim["id"])
                                 if victim_tired_lvl >= 1:
@@ -1153,11 +1149,11 @@ class db_battleroyale(commands.Cog):
                                         text = text.rstrip('.') + f"; **{victim['name']}** estaba {tired_txt.lower()}."
                                 elif victim_was_wounded_before:
                                     text = text.rstrip('.') + f"; **{victim['name']}** había sido herid{victim['letter_a']} previamente."
-                                # Si el killer se hirió en este combate (no antes), añadir texto
+                                # Player1 acabó herid@ en el enfrentamiento
                                 killer_was_wounded_before = w1_original if killer["id"] == p1["id"] else w2_original
                                 if wounded_ids.get(killer["id"], False) and not killer_was_wounded_before:
                                     text = text.rstrip('.') + f"; **{killer['name']}** acabó herid{killer['letter_a']} en el enfrentamiento."
-                                # Experiencia de combate con arma
+                                # Player1 está acomodándose con su arma
                                 if killer_weapon and was_weapon_event:
                                     wid = killer_weapon["weapon_id"]
                                     player_weapon_kills.setdefault(killer["id"], {})[wid] = player_weapon_kills.get(killer["id"], {}).get(wid, 0) + 1
@@ -1225,7 +1221,7 @@ class db_battleroyale(commands.Cog):
                                         w1, w2 = True, True
                                         wounded_ids[p1["id"]] = True
                                         wounded_ids[p2["id"]] = True
-                                        # Armas a distancia pierden ventaja en desempate (sin práctica)
+                                        # Armas a distancia pierden ventaja en desempate
                                         pw1 = player_weapons.get(p1["id"])
                                         if pw1 and pw1["weapon_kind"] == 2:
                                             bonus1 = 1 - get_tired_level(p1["id"])
@@ -1238,7 +1234,7 @@ class db_battleroyale(commands.Cog):
                                     killer_weapon = player_weapons.get(killer["id"])
                                     was_weapon_event = False
                                     # Melee: 30% evento de arma; Ranged: siempre genérico
-                                    if killer_weapon and killer_weapon["weapon_kind"] == 1 and killer_weapon["weapon_id"] in weapon_kill_events and random.random() < 0.50:  # >>> PROBABILIDAD: 50% evento de arma melee en desempate <<<
+                                    if killer_weapon and killer_weapon["weapon_kind"] == 1 and killer_weapon["weapon_id"] in weapon_kill_events and random.random() < 0.50:  # Probabilidades: Evento de arma melee en desempate
                                         template = random.choice(weapon_kill_events[killer_weapon["weapon_id"]])
                                         was_weapon_event = True
                                     else:
@@ -1250,7 +1246,6 @@ class db_battleroyale(commands.Cog):
                                     if victim_tired_lvl >= 1:
                                         tired_txt = f"{tired_labels[victim_tired_lvl]}{victim['letter_a']}"
                                         text = text.rstrip('.') + f"; **{victim['name']}** estaba {tired_txt.lower()}."
-                                    # El escudo protege al ganador de herirse
                                     if not tie_shield_win:
                                         text = text.rstrip('.') + f"; **{killer['name']}** acabó herid{killer['letter_a']} en el enfrentamiento."
                                         wounded_ids[killer["id"]] = True
@@ -1331,22 +1326,22 @@ class db_battleroyale(commands.Cog):
                 # Página de la ronda
                 stage_text = "\n".join(events_out) if events_out else "No hubo eventos."
                 pages.append((stage_name, stage_text))
-                # Si no queda nadie vivo, salir del bucle
+                # Todos muertos, salir del bucle
                 if len(alive_players) == 0:
                     break
-                # Página resumen después de cada Tarde (si aún quedan >1 vivos)
+                # Tributos Caídos después de cada Tarde
                 if stage_name.startswith("Tarde") and len(alive_players) > 1:
                     day_num = stage_name.split()[-1]
                     pages.append((f"Tributos Caídos {day_num}", build_summary()))
                     recent_deaths.clear()
-            # 4) Guardar sesión y stages en BD
+            # 4. Guardar sesión y stages en bd
             winner_name = alive_players[0]["name"] if len(alive_players) == 1 else "-"
             self.cursor.execute("""
                 INSERT INTO br_sessions (title, players, winner)
                 VALUES (?, ?, ?);
             """, (title, players, winner_name))
             session_id = self.cursor.lastrowid
-            # 5) Tributos Caídos final + página del ganador
+            # 5) Tributos Caídos final + Página del ganador
             if recent_deaths:
                 final_day = (stage_number - 2 + 1) // 3 + 1 if stage_number > 1 else 1
                 pages.append((f"Tributos Caídos {final_day}", build_summary(is_final=True)))
@@ -1381,13 +1376,12 @@ class db_battleroyale(commands.Cog):
                 pages.append(("Ganador", "Nadie sobrevivió el Battle Royale."))
             # Página de clasificación
             all_ids = list(all_players_map.keys())
-            # Orden: más bajas primero; empate en bajas → murió más tarde (índice mayor en death_order) va primero
             def rank_key(pid):
                 kills = kill_counts[pid]
                 if pid in death_order:
                     survival = death_order.index(pid)
                 else:
-                    survival = len(death_order)  # superviviente va al tope
+                    survival = len(death_order)
                 return (-kills, -survival)
             all_ids.sort(key=rank_key)
             rank_lines = []
@@ -1403,7 +1397,7 @@ class db_battleroyale(commands.Cog):
                     VALUES (?, ?, ?, ?);
                 """, (session_id, i, sn, st))
             self.db.commit()
-            # 6) Enviar embed con paginación
+            # 6) Enviar embed
             total = len(pages)
             def build_embed(page_index: int) -> nextcord.Embed:
                 page_name, page_text = pages[page_index]
@@ -1441,7 +1435,6 @@ class db_battleroyale(commands.Cog):
             if not rows:
                 await interaction.followup.send("No hay sesiones registradas aún.")
                 return
-            # Paginar de a 10
             page_size = 10
             pages = []
             for i in range(0, len(rows), page_size):
@@ -1477,7 +1470,6 @@ class db_battleroyale(commands.Cog):
                        search: str = nextcord.SlashOption(description="ID o título de la sesión", required=True)):
         await interaction.response.defer(ephemeral=False)
         try:
-            # Buscar por ID o por título
             if search.isdigit():
                 self.cursor.execute("SELECT id, title, winner FROM br_sessions WHERE id = ?;", (int(search),))
             else:
