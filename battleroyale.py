@@ -608,12 +608,6 @@ class db_battleroyale(commands.Cog):
                 return weapon["weapon_bonus"] + player_practice.get(pid, {}).get(weapon["weapon_id"], 0)
             def player_has_item(pid, item_id):
                 return item_id in player_items.get(pid, [])
-            # Items que pueden acumularse en el inventario
-            stackable_items = {6: 2}  # Medicamentos hasta 2
-            def can_hold_another(pid, item_id):
-                """¿Puede el jugador aceptar una unidad más de este item?"""
-                max_stack = stackable_items.get(item_id, 1)
-                return player_items.get(pid, []).count(item_id) < max_stack
             def get_inventory_total(pid):
                 """Total de objetos (items + arma). Máximo 2."""
                 return len(player_items.get(pid, [])) + (1 if player_weapons.get(pid) else 0)
@@ -644,8 +638,6 @@ class db_battleroyale(commands.Cog):
                     player_weapons.pop(pid, None)
             def can_acquire_item(pid, item_id):
                 """¿El jugador puede adquirir este item (posiblemente tirando el de menor valor)?"""
-                if not can_hold_another(pid, item_id):
-                    return False
                 if get_inventory_total(pid) < 2:
                     return True
                 new_value = items_value.get(item_id, 0)
@@ -653,8 +645,6 @@ class db_battleroyale(commands.Cog):
                 return lowest is not None and new_value > lowest[0]
             def add_item(pid, item_id):
                 """Añade item al inventario aplicando regla de 2 objetos. Tira el menor si es necesario."""
-                if not can_hold_another(pid, item_id):
-                    return False
                 if get_inventory_total(pid) >= 2:
                     new_value = items_value.get(item_id, 0)
                     lowest = get_lowest_object(pid)
@@ -789,7 +779,14 @@ class db_battleroyale(commands.Cog):
                 if not victim_inv:
                     return text
                 for iid in victim_inv:
-                    if can_hold_another(killer["id"], iid) and add_item(killer["id"], iid):
+                    # Swap cantimplora vacía por llena
+                    if iid == 3 and not cantimplora_empty.get(victim["id"], False) \
+                            and player_has_item(killer["id"], 3) and cantimplora_empty.get(killer["id"], False):
+                        cantimplora_empty[killer["id"]] = False
+                        player_items.get(victim["id"], []).remove(iid)
+                        text = text.rstrip('.') + f"; **{killer['name']}** cambió su cantimplora vacía por la llena del cuerpo de **{victim['name']}**."
+                        continue
+                    if add_item(killer["id"], iid):
                         item_name = items_data.get(iid, "?")
                         text = text.rstrip('.') + f"; **{killer['name']}** tomó {item_name.lower()} del cuerpo de **{victim['name']}**."
                         player_items.get(victim["id"], []).remove(iid)
@@ -805,7 +802,7 @@ class db_battleroyale(commands.Cog):
                 pid = player["id"]
                 if not dropped_items:
                     return text
-                eligible = [(i, di) for i, di in enumerate(dropped_items) if can_hold_another(pid, di["item_id"])]
+                eligible = [(i, di) for i, di in enumerate(dropped_items) if can_acquire_item(pid, di["item_id"])]
                 if eligible and random.random() < 0.50:  # Probabilidades: Pickup item del suelo
                     idx, picked = random.choice(eligible)
                     dropped_items.pop(idx)
@@ -1001,7 +998,7 @@ class db_battleroyale(commands.Cog):
                         pid_wp = actor["id"]
                         eligible_item_pickups = [
                             (eid, et, iid) for eid, et, iid in masacre_item_pickups
-                            if can_hold_another(pid_wp, iid)
+                            if can_acquire_item(pid_wp, iid)
                         ]
                         if eligible_item_pickups and random.random() < item_pickup_chance:
                             evt_id, template, item_id = random.choice(eligible_item_pickups)
@@ -1121,6 +1118,7 @@ class db_battleroyale(commands.Cog):
                         bonus2 -= get_tired_level(p2["id"])
                         if s2:
                             bonus2 -= 2
+                        tie_count = 0
                         while True:
                             roll1 = random.randint(1, 6) + bonus1 - (3 if w1 else 0)
                             roll2 = random.randint(1, 6) + bonus2 - (3 if w2 else 0)
@@ -1183,29 +1181,89 @@ class db_battleroyale(commands.Cog):
                                 break
                             else:
                                 # Empate
+                                tie_count += 1
+                                first_tie = (tie_count == 1)
                                 tie_shield_win = False
-                                # Enfermo pierde empates
+                                p1_shield = player_has_item(p1["id"], 4)
+                                p2_shield = player_has_item(p2["id"], 4)
+                                # Escudo, primer empate: Enfermo herido & Herido muere o sobrevive
+                                def shield_save_sick(p, w_state):
+                                    if not w_state:
+                                        wounded_ids[p["id"]] = True
+                                    return True
+                                def shield_save_wounded():
+                                    return random.random() >= 0.5 
                                 if s1 and not s2:
+                                    if first_tie and p1_shield:
+                                        shield_save_sick(p1, w1)
+                                        w1 = True
+                                        tie_shield_win = True
+                                        continue
                                     killer, victim = p2, p1
                                 elif s2 and not s1:
+                                    if first_tie and p2_shield:
+                                        shield_save_sick(p2, w2)
+                                        w2 = True
+                                        tie_shield_win = True
+                                        continue
                                     killer, victim = p1, p2
                                 elif s1 and s2:
-                                    # Ambos enfermos: ambos mueren
-                                    killer, victim = None, None
+                                    # Ambos enfermos
+                                    p1_saved = first_tie and p1_shield
+                                    p2_saved = first_tie and p2_shield
+                                    if p1_saved:
+                                        shield_save_sick(p1, w1); w1 = True
+                                    if p2_saved:
+                                        shield_save_sick(p2, w2); w2 = True
+                                    if p1_saved and p2_saved:
+                                        tie_shield_win = True
+                                        continue
+                                    elif p1_saved:
+                                        killer, victim = p1, p2
+                                        tie_shield_win = True
+                                    elif p2_saved:
+                                        killer, victim = p2, p1
+                                        tie_shield_win = True
+                                    else:
+                                        killer, victim = None, None
                                 elif w1 and not w2:
                                     # Wounded vs sano: wounded muere
-                                    killer, victim = p2, p1
+                                    if first_tie and p1_shield:
+                                        if shield_save_wounded():
+                                            tie_shield_win = True
+                                            continue
+                                        killer, victim = p2, p1
+                                        tie_shield_win = True  # no hiere al oponente
+                                    else:
+                                        killer, victim = p2, p1
                                 elif w2 and not w1:
-                                    killer, victim = p1, p2
+                                    if first_tie and p2_shield:
+                                        if shield_save_wounded():
+                                            tie_shield_win = True
+                                            continue
+                                        killer, victim = p1, p2
+                                        tie_shield_win = True
+                                    else:
+                                        killer, victim = p1, p2
                                 elif w1 and w2:
-                                    # Ambos wounded: ambos mueren
-                                    killer, victim = None, None
+                                    # Ambos wounded
+                                    p1_saved = first_tie and p1_shield and shield_save_wounded()
+                                    p2_saved = first_tie and p2_shield and shield_save_wounded()
+                                    if p1_saved and p2_saved:
+                                        tie_shield_win = True
+                                        continue
+                                    elif p1_saved:
+                                        killer, victim = p1, p2
+                                        tie_shield_win = True
+                                    elif p2_saved:
+                                        killer, victim = p2, p1
+                                        tie_shield_win = True
+                                    else:
+                                        killer, victim = None, None
                                 else:
                                     # Ambos sanos: verificar escudos
-                                    p1_shield = player_has_item(p1["id"], 4)
-                                    p2_shield = player_has_item(p2["id"], 4)
                                     if p1_shield != p2_shield:
-                                        # Escudo protege: solo el sin escudo se hiere → pierde
+                                        # Escudo protege: sólo el sin escudo se hiere → pierde
                                         tie_shield_win = True
                                         if p1_shield:
                                             wounded_ids[p2["id"]] = True
